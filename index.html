@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBT MTK03 - Pola Bilangan dan Waktu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col">
+
+  <header class="bg-indigo-700 text-white shadow-lg py-4 px-6 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl">📚</span>
+      <div>
+        <h1 class="text-lg md:text-xl font-bold leading-tight">CBT MTK03</h1>
+        <p class="text-xs text-indigo-200">Asesmen Sumatif: Matematika (Pola Bilangan & Waktu)</p>
+      </div>
+    </div>
+    <div class="space-x-2 flex">
+      <span id="status-server" class="hidden sm:inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-400">
+        <span id="dot-server" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="text-server">Cek server…</span>
+      </span>
+      <button onclick="switchView('login')" class="bg-indigo-600 hover:bg-indigo-800 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition border border-indigo-400">🔑 Ruang Ujian</button>
+      <button onclick="bukaModalPasswordAdmin()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm">⚙️ Panel Admin</button>
+    </div>
+  </header>
+
+  <div id="status-kecurangan-bar" class="hidden bg-rose-600 text-white text-xs font-bold py-2 px-4 text-center sticky top-[68px] z-40 shadow-md flex justify-between items-center">
+    <span>⚠️ Mode Ujian Dilindungi (Anti-Screenshot & Deteksi Tab Aktif)</span>
+    <span class="bg-rose-800 px-2.5 py-1 rounded-full border border-rose-400">Pelanggaran: <strong id="count-pelanggaran">0</strong> / 2</span>
+  </div>
+
+  <main class="container mx-auto p-4 md:p-6 flex-grow select-none">
+
+    <!-- LOGIN -->
+    <section id="view-login" class="max-w-md mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-200 mt-6 space-y-6">
+      <div class="text-center space-y-2 border-b pb-4">
+        <div class="w-16 h-16 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center mx-auto text-3xl font-bold shadow-inner">📝</div>
+        <h2 class="text-2xl font-extrabold text-slate-800">Masuk Peserta Ujian</h2>
+        <p class="text-slate-500 text-sm">Masukkan ID dan Nama Anda</p>
+      </div>
+      <form id="form-login-peserta" onsubmit="handleLoginPeserta(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">ID Peserta</label>
+          <input type="text" id="login-id" required placeholder="Contoh: P001" class="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">Nama Lengkap</label>
+          <input type="text" id="login-nama" required placeholder="Nama Siswa" class="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition">🚀 Mulai Ujian MTK03</button>
+      </form>
+      <div class="text-center pt-2">
+        <p class="text-xs text-slate-400">Peserta terdaftar: <strong id="login-count-peserta" class="text-indigo-600">0</strong> siswa</p>
+      </div>
+    </section>
+
+    <!-- MODAL AUTH ADMIN -->
+    <div id="modal-auth-admin" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-slate-100">
+        <div class="text-center mb-5">
+          <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl mb-2">🔒</div>
+          <h3 class="font-bold text-xl text-slate-800">Akses Panel Admin</h3>
+          <p class="text-slate-500 text-xs mt-1">Masukkan password khusus admin</p>
+        </div>
+        <form onsubmit="verifikasiPasswordAdmin(event)" class="space-y-4" autocomplete="off">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Password Admin</label>
+            <div class="relative">
+              <input type="password" id="input-password-admin" placeholder="6 digit angka" required autocomplete="new-password"
+                inputmode="numeric" maxlength="6"
+                class="w-full border border-slate-300 rounded-xl p-3 text-center tracking-widest font-bold text-lg focus:ring-2 focus:ring-amber-500 focus:outline-none pr-12">
+              <button type="button" onclick="toggleAdminPassword()" id="btn-toggle-pass" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-lg px-2">👁️</button>
+            </div>
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button type="button" onclick="tutupModalPasswordAdmin()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-sm transition">Batal</button>
+            <button type="submit" class="w-1/2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition">🔓 Masuk Admin</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- PANEL ADMIN -->
+    <section id="view-admin" class="hidden space-y-6">
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800">⚙️ Control Panel Guru / Admin</h2>
+          <p class="text-xs text-slate-500">Data terpusat di Google Sheets.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="muatPesertaDefaultCSV()" class="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-2 rounded-lg border border-emerald-200 font-bold">📥 Muat 31 Peserta Default</button>
+          <button onclick="bukaModalEditSoal()" class="text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-2 rounded-lg border border-indigo-200 font-bold">✏️ Edit Soal</button>
+          <button onclick="refreshAdminData()" class="text-xs bg-sky-50 text-sky-700 hover:bg-sky-100 px-3 py-2 rounded-lg border border-sky-200 font-bold">🔄 Refresh</button>
+          <button onclick="resetSemuaData()" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-2 rounded-lg border border-rose-200 font-semibold">🗑️ Reset</button>
+          <button onclick="logoutAdmin()" class="text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-2 rounded-lg border border-slate-200 font-semibold">🚪 Keluar</button>
+        </div>
+      </div>
+
+      <!-- Komponen Admin Lainnya Tetap Sama -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+          <h3 class="font-bold text-base text-slate-800 border-b pb-2">👤 Tambah / Edit Peserta</h3>
+          <form id="form-tambah-peserta" onsubmit="tambahPeserta(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ID Peserta</label>
+              <input type="text" id="admin-id" placeholder="Misal: P032" required class="w-full border p-2.5 rounded-lg border-slate-300 text-sm uppercase">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Siswa</label>
+              <input type="text" id="admin-nama" placeholder="Nama Lengkap" required class="w-full border p-2.5 rounded-lg border-slate-300 text-sm">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-sm transition">+ Tambah / Update</button>
+          </form>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+          <h3 class="font-bold text-base text-slate-800 border-b pb-2">📂 Import Peserta Kolektif</h3>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Upload File Excel/CSV</label>
+            <input type="file" id="file-excel-peserta" accept=".xlsx,.xls,.csv" onchange="handleUploadExcel(event)"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-200 rounded-lg p-1">
+          </div>
+          <div class="relative flex py-1 items-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="flex-shrink mx-2 text-slate-400 text-xs">atau Paste CSV</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+          </div>
+          <textarea id="paste-peserta" rows="3" placeholder="P001, ABDILLAH&#10;P002, AHMAD" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono"></textarea>
+          <button onclick="prosesPastePeserta()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition">📥 Import Teks</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-200">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-slate-800">Daftar Peserta (<span id="count-peserta">0</span>)</h3>
+            <button onclick="hapusSemuaPeserta()" class="text-xs text-rose-600 hover:underline">Hapus Semua</button>
+          </div>
+          <div class="overflow-y-auto max-h-72 border border-slate-100 rounded-lg">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-100 sticky top-0"><tr class="border-b"><th class="p-2.5">ID</th><th class="p-2.5">Nama</th><th class="p-2.5 text-center">Aksi</th></tr></thead>
+              <tbody id="tabel-peserta"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+              <h3 class="font-bold text-slate-800">Rekap Hasil Ujian</h3>
+              <div class="flex gap-2">
+                <button onclick="exportHasilKeExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-sm">📊 Excel</button>
+                <button onclick="hapusSemuaHasil()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-2.5 py-2 rounded-lg border border-rose-200">🗑️ Reset</button>
+              </div>
+            </div>
+            <div class="overflow-y-auto max-h-72 border border-slate-100 rounded-lg">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-100 sticky top-0"><tr class="border-b"><th class="p-2.5">ID</th><th class="p-2.5">Nama</th><th class="p-2.5 text-center">Skor</th><th class="p-2.5 text-center">Waktu</th><th class="p-2.5 text-center">Aksi</th></tr></thead>
+                <tbody id="tabel-hasil"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL EDIT SOAL -->
+    <div id="modal-edit-soal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-indigo-700 text-white p-4 flex justify-between items-center">
+          <h3 class="font-bold text-lg">✏️ Kelola & Edit Soal</h3>
+          <button onclick="tutupModalEditSoal()" class="text-white hover:bg-indigo-600 px-3 py-1 rounded-lg font-bold text-sm">✕</button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-6 flex-grow">
+          <div class="flex gap-4 items-center">
+            <label class="text-sm font-bold text-slate-700">Pilih Nomor Soal:</label>
+            <select id="select-nomor-soal" onchange="muatFormEditorSoal()" class="border border-slate-300 rounded-lg p-2 text-sm font-bold text-indigo-700"></select>
+          </div>
+          <form id="form-editor-soal" onsubmit="simpanPerubahanSoal(event)" class="space-y-4 border-t pt-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Teks Soal</label>
+              <textarea id="edit-teks-soal" rows="3" class="w-full border p-2.5 rounded-xl text-sm border-slate-300"></textarea>
+            </div>
+            <div id="container-edit-konteks" class="hidden">
+              <label class="block text-xs font-bold text-slate-700 mb-1">Konteks (Bacaan)</label>
+              <textarea id="edit-konteks-soal" rows="2" class="w-full border p-2.5 rounded-xl text-sm border-amber-300 bg-amber-50"></textarea>
+            </div>
+            <div id="container-edit-opsi" class="space-y-2">
+              <label class="block text-xs font-bold text-slate-700">Pilihan / Pernyataan</label>
+              <div id="wrapper-opsi-inputs" class="space-y-2"></div>
+            </div>
+            <div class="pt-4 border-t flex justify-between items-center">
+              <button type="button" onclick="resetSoalDefault()" class="text-xs text-rose-600 hover:underline">Reset ke Default</button>
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md">💾 Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- UJIAN -->
+    <section id="view-exam" class="hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="lg:col-span-3 bg-white p-6 rounded-2xl shadow-md border border-slate-200 flex flex-col justify-between min-h-[550px]">
+          <div>
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-4 mb-4">
+              <div>
+                <span id="label-nomor" class="font-bold text-lg text-indigo-700 block">Soal 1 dari 30</span>
+                <span id="label-tipe" class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold">Pilihan Ganda</span>
+              </div>
+              <div class="text-right flex items-center gap-2">
+                <span id="badge-warning-pindah" class="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full font-bold text-xs">Pindah Layar: 0/2</span>
+                <span id="timer" class="bg-rose-100 text-rose-700 px-3 py-1.5 rounded-full font-mono font-bold text-sm shadow-inner">Sisa Waktu: 45:00</span>
+              </div>
+            </div>
+            <div id="soal-container" class="space-y-4 select-none"></div>
+          </div>
+          <div class="flex justify-between items-center border-t pt-4 mt-6">
+            <button onclick="prevSoal()" id="btn-prev" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl font-semibold disabled:opacity-50 transition">← Sebelumnya</button>
+            <button onclick="nextSoal()" id="btn-next" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md">Berikutnya →</button>
+            <button onclick="konfirmasiSelesai()" id="btn-finish" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md">✅ Kirim Jawaban</button>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-200 h-fit space-y-4">
+          <div class="border-b pb-2">
+            <h3 class="font-bold text-slate-800">Navigasi Soal</h3>
+            <p class="text-xs text-slate-400">Klik nomor untuk melompat</p>
+          </div>
+          <div id="grid-navigasi" class="grid grid-cols-5 gap-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HASIL -->
+    <section id="view-result" class="hidden max-w-lg mx-auto bg-white p-8 rounded-2xl shadow-xl border border-slate-200 text-center space-y-4 mt-8">
+      <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner">🎉</div>
+      <h2 class="text-2xl font-bold text-slate-800">Ujian Telah Selesai!</h2>
+      <p id="teks-hasil" class="text-slate-600 text-sm"></p>
+      <div class="bg-gradient-to-br from-indigo-50 to-slate-50 p-6 rounded-2xl border border-indigo-100 shadow-sm">
+        <span class="text-xs text-slate-500 uppercase tracking-wider font-bold">Skor Akhir</span>
+        <div id="nilai-akhir" class="text-6xl font-extrabold text-indigo-700 my-2">0</div>
+      </div>
+      <button onclick="switchView('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold shadow-md">Kembali</button>
+    </section>
+
+  </main>
+
+ <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz2ZaHWLiEba1dx58udYoskggGsXBwPGSYgXjU6ADeNyt9AZcgK56quebpiuy8dUM6S/exec';
+    const PASSWORD_ADMIN = '121985';
+    let adminPassword = '';
+
+    async function apiFetch(action, params = {}) {
+      const payload = { action, ...params };
+      if (adminPassword) payload.adminPassword = adminPassword;
+      let res;
+      try {
+        res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      } catch (netErr) { throw new Error('Tidak bisa hubungi server. Pastikan koneksi internet aktif.'); }
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error('Format respons server tidak valid.'); }
+      if (data.error) throw new Error(data.error);
+      return data;
+    }
+
+    // ============================================================
+    // DATA DEFAULT SOAL & PESERTA
+    // ============================================================
+    const defaultSoal = [
+      { id: 1, teks: '1 jam sama dengan berapa menit?', tipe: 'pg', opsi: ['30 menit', '60 menit', '100 menit', '120 menit'], kunci: 1 },
+      { id: 2, teks: 'Perhatikan pola bilangan berikut: 5, 10, 15, 20, ... Bilangan selanjutnya adalah...', tipe: 'pg', opsi: ['21', '25', '30', '35'], kunci: 1 },
+      { id: 3, teks: 'Andi berangkat ke sekolah pukul 06.15 dan tiba pukul 07.00. Berapa lama perjalanan Andi?', tipe: 'pg', opsi: ['30 menit', '45 menit', '60 menit', '75 menit'], kunci: 1 },
+      { id: 4, teks: 'Suatu pola bilangan mengecil adalah: 50, 45, 40, 35, ... Bilangan pada urutan kelima adalah...', tipe: 'pg', opsi: ['25', '30', '35', '40'], kunci: 1 },
+      { id: 5, teks: '[Gambar jam dinding menunjukkan pukul 09.45] Jika jarum jam terus berputar, jam berapakah 30 menit setelah waktu yang ditunjukkan pada gambar?', tipe: 'pg', opsi: ['10.00', '10.15', '10.30', '10.45'], kunci: 1 },
+      { id: 6, teks: 'Susunan kursi di aula: baris pertama 8 kursi, baris kedua 12 kursi, baris ketiga 16 kursi. Berapa jumlah kursi pada baris keenam?', tipe: 'pg', opsi: ['20', '24', '28', '32'], kunci: 2 },
+      { id: 7, teks: 'Waktu 2,5 jam sama dengan...', tipe: 'pg', opsi: ['120 menit', '130 menit', '150 menit', '250 menit'], kunci: 2 },
+      { id: 8, teks: 'Perhatikan pola bilangan berikut: 1, 4, 9, 16, ... Pola selanjutnya adalah...', tipe: 'pg', opsi: ['20', '24', '25', '36'], kunci: 2 },
+      { id: 9, teks: 'Kereta api dijadwalkan berangkat pukul 13.15, namun mengalami keterlambatan selama 40 menit. Pukul berapa kereta tersebut akhirnya berangkat?', tipe: 'pg', opsi: ['13.45', '13.55', '14.05', '14.15'], kunci: 1 },
+      { id: 10, teks: 'Sebuah amuba membelah diri menjadi dua setiap jam. Jika jam pertama ada 2 amuba (2, 4, 8, 16, ...). Berapa jumlah amuba pada jam ke-7?', tipe: 'pg', opsi: ['32', '64', '128', '256'], kunci: 1 },
+      { id: 11, teks: 'Usia kakek 6 dasawarsa 3 tahun, sedangkan usia ayah 4 windu 2 tahun. Selisih usia kakek dan ayah adalah...', tipe: 'pg', opsi: ['21 tahun', '29 tahun', '31 tahun', '41 tahun'], kunci: 1 },
+      { id: 12, teks: '[Gambar susunan korek api berbentuk segitiga berjajar. Pola 1: 3 batang. Pola 2: 5 batang. Pola 3: 7 batang] Berapa banyak batang korek api yang dibutuhkan untuk membentuk pola ke-5?', tipe: 'pg', opsi: ['9 batang', '11 batang', '13 batang', '15 batang'], kunci: 1 },
+      { id: 13, teks: 'Lomba cerdas cermat dimulai pukul 08.00 dan berakhir pukul 11.30. Jika di pertengahan acara terdapat waktu istirahat selama 45 menit, berapa lama waktu lomba sebenarnya (bersih)?', tipe: 'pg', opsi: ['2 jam 45 menit', '3 jam', '3 jam 15 menit', '3 jam 30 menit'], kunci: 0 },
+      { id: 14, teks: 'Perhatikan pola bilangan berikut: 80, 40, 20, 10, ... Pola pembentukan deret tersebut adalah...', tipe: 'pg', opsi: ['Dikurangi 40', 'Dibagi 2', 'Dikali 2', 'Ditambah 10'], kunci: 1 },
+      { id: 15, teks: 'Waktu di Jakarta (WIB) menunjukkan pukul 09.00 pagi. Pukul berapakah saat itu di Jayapura (WIT)?', tipe: 'pg', opsi: ['08.00 pagi', '09.00 pagi', '10.00 pagi', '11.00 siang'], kunci: 3 },
+      { id: 16, teks: 'Manakah dari pernyataan berikut yang merupakan konversi waktu yang TEPAT?', tipe: 'pgk', opsi: ['1 hari = 24 jam', '1 jam = 60 menit', '1 menit = 100 detik', '1 minggu = 7 hari'], kunci: [0, 1, 3] },
+      { id: 17, teks: 'Manakah dari kumpulan bilangan berikut yang menunjukkan pola bilangan bertambah 4?', tipe: 'pgk', opsi: ['2, 6, 10, 14', '1, 5, 9, 13', '10, 14, 18, 22', '3, 6, 9, 12'], kunci: [0, 1, 2] },
+      { id: 18, teks: 'Budi bermain bola dari pukul 15.30 sampai pukul 17.00. Pernyataan yang BENAR adalah...', tipe: 'pgk', opsi: ['Budi bermain selama 1,5 jam', 'Budi bermain selama 90 menit', 'Budi bermain selama 2 jam', 'Waktu selesai adalah jam 5 sore'], kunci: [0, 1, 3] },
+      { id: 19, teks: 'Perhatikan barisan bilangan: 100, 90, 80, 70, ... Pernyataan yang BENAR mengenai pola tersebut adalah...', tipe: 'pgk', opsi: ['Pola bilangannya mengecil', 'Bilangan selanjutnya adalah 60', 'Selisih antar bilangan adalah 10', 'Pola ini dikali dengan angka 2'], kunci: [0, 1, 2] },
+      { id: 20, teks: '[Gambar 2 jam. Jam A: Pukul 07.00. Jam B: Pukul 09.30] Berdasarkan gambar, pernyataan mana saja yang BENAR?', tipe: 'pgk', opsi: ['Selisih waktu antara Jam A dan Jam B adalah 2 jam 30 menit', 'Jika Budi belajar dari Jam A ke Jam B, ia belajar selama 150 menit', 'Jam B menunjukkan pukul setengah sembilan', 'Selisih waktu keduanya kurang dari 2 jam'], kunci: [0, 1] },
+      { id: 21, teks: 'Satuan waktu yang digunakan untuk menyatakan umur atau usia panjang yang TEPAT adalah...', tipe: 'pgk', opsi: ['Abad', 'Windu', 'Dasawarsa', 'Detik'], kunci: [0, 1, 2] },
+      { id: 22, teks: 'Sebuah tanaman diukur tingginya setiap minggu. Minggu ke-1: 2 cm, Minggu ke-2: 4 cm, Minggu ke-3: 8 cm. Pernyataan yang TEPAT adalah...', tipe: 'pgk', opsi: ['Tinggi tanaman membesar dua kali lipat setiap minggu', 'Pada minggu ke-4 tinggi tanaman adalah 16 cm', 'Pertumbuhan tanaman bersifat konstan (bertambah 2cm)', 'Ini adalah pola bilangan berlipat (perkalian)'], kunci: [0, 1, 3] },
+      { id: 23, teks: 'Kereta api menempuh perjalanan selama 3 jam 15 menit. Jika berangkat pukul 08.20, pernyataan yang BENAR adalah...', tipe: 'pgk', opsi: ['Kereta tiba pukul 11.35', 'Lama perjalanan sama dengan 195 menit', 'Jika berangkat jam 09.00 maka tiba jam 12.15', 'Kereta tiba pukul 12.00 siang tepat'], kunci: [0, 1, 2] },
+      { id: 24, teks: '[Gambar pola titik persegi. Pola 1: 1 titik. Pola 2: 4 titik. Pola 3: 9 titik. Pola 4: 16 titik] Berdasarkan pola gambar tersebut, pernyataan yang BENAR adalah...', tipe: 'pgk', opsi: ['Pola kelima akan memiliki 25 titik', 'Pola ini adalah pola bilangan kuadrat (n x n)', 'Pola keenam akan memiliki 36 titik', 'Selisih jumlah titik setiap polanya selalu sama'], kunci: [0, 1, 2] },
+      { id: 25, teks: 'Sita belajar selama 1 jam 45 menit. Budi belajar selama 110 menit. Pernyataan yang BENAR adalah...', tipe: 'pgk', opsi: ['Sita belajar selama 105 menit', 'Budi belajar lebih lama dari Sita', 'Selisih waktu belajar mereka adalah 5 menit', 'Mereka belajar dengan total waktu yang sama'], kunci: [0, 1, 2] },
+      { id: 26, tipe: 'bs', konteks: 'Pak Tani menanam pohon dengan jarak yang teratur. Pada baris pertama terdapat 5 pohon, baris kedua 8 pohon, baris ketiga 11 pohon, dan seterusnya.', pernyataan: ['Pola bilangan bertambah 4 setiap barisnya.', 'Banyak pohon pada baris keempat adalah 14 pohon.', 'Baris kelima akan memiliki 17 pohon.'], kunci: ['S', 'B', 'B'] },
+      { id: 27, tipe: 'bs', konteks: 'Dita masuk ke kolam renang pukul 15.20 dan selesai pada pukul 16.50. Selama waktu tersebut, ia beristirahat minum selama 10 menit di tepi kolam.', pernyataan: ['Total waktu Dita berada di area kolam renang (termasuk istirahat) adalah 90 menit.', 'Waktu Dita berenang tanpa istirahat adalah 1 jam 20 menit.', 'Dita selesai les berenang jam 5 sore kurang 10 menit.'], kunci: ['B', 'B', 'B'] },
+      { id: 28, tipe: 'bs', konteks: 'Diketahui tanggal 1 Agustus jatuh pada hari Selasa.', pernyataan: ['Tanggal 8 Agustus juga jatuh pada hari Selasa.', 'Hari Kemerdekaan RI (17 Agustus) pada bulan tersebut jatuh pada hari Kamis.', 'Pola tanggal untuk hari Selasa di bulan itu adalah 1, 8, 15, 22, 29.'], kunci: ['B', 'B', 'B'] },
+      { id: 29, tipe: 'bs', konteks: 'Pabrik sepatu pada bulan Januari memproduksi 2000 pasang sepatu. Karena permintaan menurun, produksinya dikurangi 100 pasang setiap bulannya secara tetap.', pernyataan: ['Kasus ini merupakan contoh penerapan pola bilangan membesar.', 'Pada bulan Maret (bulan ke-3), produksi pabrik adalah 1800 pasang sepatu.', 'Pada bulan Mei (bulan ke-5), produksi pabrik adalah 1500 pasang sepatu.'], kunci: ['S', 'B', 'S'] },
+      { id: 30, tipe: 'bs', konteks: 'Jadwal penerbangan pesawat dari Jakarta ke Bali memakan waktu 1 jam 50 menit. Pesawat dijadwalkan lepas landas (take off) pukul 19.30 WIB.', pernyataan: ['Pesawat dijadwalkan tiba di Bali pada pukul 21.20 WIB (Waktu Jakarta).', 'Jika waktu di Bali (WITA) lebih cepat 1 jam dari Jakarta (WIB), maka pesawat tiba di Bali pukul 22.20 WITA.', 'Lama perjalanan tersebut setara dengan 120 menit.'], kunci: ['B', 'B', 'S'] }
+    ];
+
+    const defaultPesertaCSV = [
+      { id: 'P001', nama: 'ABDILLAH YANN ADABY' }, { id: 'P002', nama: 'AHMAD MADED SYAFI' },
+      { id: 'P003', nama: 'ANDIKA OKTA ALFARIZI' }, { id: 'P031', nama: 'ZEA MIRZANY ZAIN' }
+    ];
+
+    let databaseSoal = JSON.parse(JSON.stringify(defaultSoal));
+    let dataPeserta = []; let dataHasil = [];
+    let pesertaAktif = null; let indexSoalAktif = 0; let jawabanPeserta = {};
+    let sisaWaktu = 45 * 60; let timerInterval = null;
+    let jumlahPelanggaranPindahTab = 0; const MAX_PELANGGARAN_PINDAH_TAB = 2; let sedangUjianAktif = false;
+
+    // === PROTEKSI UJIAN & STATUS ===
+    document.addEventListener('visibilitychange', function() { if (sedangUjianAktif && document.visibilityState === 'hidden') catatPelanggaranPindahLayar(); });
+    window.addEventListener('blur', function() { if (sedangUjianAktif && document.visibilityState === 'visible') catatPelanggaranPindahLayar(); });
+    
+    function catatPelanggaranPindahLayar() {
+      if (!sedangUjianAktif) return;
+      jumlahPelanggaranPindahTab++;
+      document.getElementById('count-pelanggaran').innerText = jumlahPelanggaranPindahTab;
+      if (jumlahPelanggaranPindahTab >= MAX_PELANGGARAN_PINDAH_TAB) {
+        sedangUjianAktif = false; 
+        alert(`🚨 PELANGGARAN MAKSIMAL! Ujian dihentikan paksa.`); 
+        prosesSelesaiUjian(true);
+      } else { 
+        alert(`⚠️ PERINGATAN (${jumlahPelanggaranPindahTab}/${MAX_PELANGGARAN_PINDAH_TAB})! Dilarang membuka tab/aplikasi lain saat ujian.`); 
+      }
+    }
+
+    async function cekStatusServer() {
+      try {
+        const info = await apiFetch('info');
+        document.getElementById('dot-server').className = 'w-2 h-2 rounded-full bg-emerald-400';
+        document.getElementById('text-server').innerText = `Online · ${info.peserta ?? 0} siswa`;
+      } catch (e) {
+        document.getElementById('dot-server').className = 'w-2 h-2 rounded-full bg-rose-400';
+        document.getElementById('text-server').innerText = 'Offline';
+      }
+    }
+
+    async function boot() { await initData(); cekStatusServer(); setInterval(cekStatusServer, 20000); }
+    boot();
+
+    async function initData() {
+      try { 
+        const soal = await apiFetch('getSoal'); if (soal && soal.length) databaseSoal = soal; 
+        dataPeserta = await apiFetch('getPeserta'); 
+        updateLoginCount(); 
+      } catch (e) { console.log('Menggunakan data lokal'); }
+    }
+
+    function switchView(viewName) {
+      ['login','admin','exam','result'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
+      document.getElementById('status-kecurangan-bar').classList.add('hidden');
+      if (viewName !== 'exam') sedangUjianAktif = false;
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+      if (viewName === 'login') updateLoginCount();
+      if (viewName === 'exam') document.getElementById('status-kecurangan-bar').classList.remove('hidden');
+    }
+    
+    function updateLoginCount() { if (document.getElementById('login-count-peserta')) document.getElementById('login-count-peserta').innerText = dataPeserta.length; }
+
+    // === FUNGSI ADMIN PANEL ===
+    function bukaModalPasswordAdmin() {
+      document.getElementById('modal-auth-admin').classList.remove('hidden');
+      document.getElementById('input-password-admin').value = '';
+      setTimeout(() => document.getElementById('input-password-admin').focus(), 100);
+    }
+    
+    function tutupModalPasswordAdmin() {
+      document.getElementById('modal-auth-admin').classList.add('hidden');
+    }
+    
+    function toggleAdminPassword() {
+      const input = document.getElementById('input-password-admin');
+      if (input.type === 'password') { input.type = 'text'; } else { input.type = 'password'; }
+    }
+
+    async function verifikasiPasswordAdmin(e) {
+      e.preventDefault();
+      const inputPass = document.getElementById('input-password-admin').value;
+      if (inputPass === PASSWORD_ADMIN) {
+        adminPassword = inputPass;
+        tutupModalPasswordAdmin();
+        switchView('admin');
+        await refreshAdminData();
+      } else {
+        alert('❌ Password Salah!');
+        document.getElementById('input-password-admin').value = '';
+      }
+    }
+
+    function logoutAdmin() {
+      adminPassword = '';
+      switchView('login');
+    }
+
+    async function refreshAdminData() {
+      try {
+        dataPeserta = await apiFetch('getPeserta');
+        dataHasil = await apiFetch('getHasil');
+        renderTabelAdmin();
+      } catch (err) { alert('Gagal memuat data: ' + err.message); }
+    }
+
+    function renderTabelAdmin() {
+      document.getElementById('count-peserta').innerText = dataPeserta.length;
+      document.getElementById('tabel-peserta').innerHTML = dataPeserta.map(p => `
+        <tr class="border-b hover:bg-slate-50">
+          <td class="p-2.5 font-mono text-xs">${p.id}</td><td class="p-2.5">${p.nama}</td>
+          <td class="p-2.5 text-center"><button onclick="hapusPeserta('${p.id}')" class="text-rose-600 hover:bg-rose-100 p-1.5 rounded">🗑️</button></td>
+        </tr>`).join('');
+      document.getElementById('tabel-hasil').innerHTML = dataHasil.map(h => `
+        <tr class="border-b hover:bg-slate-50">
+          <td class="p-2.5 font-mono text-xs">${h.id}</td><td class="p-2.5">${h.nama}</td>
+          <td class="p-2.5 text-center font-bold text-indigo-700">${h.skor}</td>
+          <td class="p-2.5 text-center text-xs text-slate-500">${h.waktu}</td>
+          <td class="p-2.5 text-center"><button onclick="hapusHasil('${h.id}')" class="text-rose-600 hover:bg-rose-100 p-1.5 rounded">🗑️</button></td>
+        </tr>`).join('');
+    }
+
+    async function tambahPeserta(e) {
+      e.preventDefault();
+      const id = document.getElementById('admin-id').value.trim().toUpperCase();
+      const nama = document.getElementById('admin-nama').value.trim();
+      try { await apiFetch('addPeserta', { id, nama }); document.getElementById('form-tambah-peserta').reset(); refreshAdminData(); alert('Peserta berhasil ditambahkan'); } 
+      catch (err) { alert(err.message); }
+    }
+
+    async function prosesPastePeserta() {
+      const text = document.getElementById('paste-peserta').value;
+      if(!text.trim()) return alert('Teks kosong');
+      const lines = text.split('\n'); const newPeserta = [];
+      lines.forEach(line => { const parts = line.split(','); if(parts.length >= 2) newPeserta.push({ id: parts[0].trim().toUpperCase(), nama: parts[1].trim() }); });
+      if(newPeserta.length > 0) {
+        try { await apiFetch('syncPeserta', { peserta: newPeserta }); document.getElementById('paste-peserta').value = ''; refreshAdminData(); alert(`${newPeserta.length} peserta diimpor.`); } 
+        catch (err) { alert(err.message); }
+      }
+    }
+
+    async function muatPesertaDefaultCSV() {
+      if(!confirm('Muat data peserta default CSV?')) return;
+      try { await apiFetch('syncPeserta', { peserta: defaultPesertaCSV }); refreshAdminData(); alert('Peserta default berhasil dimuat.'); } 
+      catch (err) { alert(err.message); }
+    }
+
+    async function hapusPeserta(id) { if(confirm(`Hapus peserta ${id}?`)) { try { await apiFetch('deletePeserta', { id }); refreshAdminData(); } catch(err){ alert(err.message); } } }
+    async function hapusSemuaPeserta() { if(confirm('YAKIN hapus SEMUA peserta?')) { try { await apiFetch('clearPeserta'); refreshAdminData(); } catch(err){ alert(err.message); } } }
+    async function hapusHasil(id) { if(confirm(`Hapus hasil ${id}?`)) { try { await apiFetch('deleteHasil', { id }); refreshAdminData(); } catch(err){ alert(err.message); } } }
+    async function hapusSemuaHasil() { if(confirm('YAKIN hapus SEMUA hasil?')) { try { await apiFetch('clearHasil'); refreshAdminData(); } catch(err){ alert(err.message); } } }
+    async function resetSemuaData() { if(confirm('⚠️ BAHAYA: Reset seluruh sistem (Peserta, Hasil, Soal)?')) { try { await apiFetch('resetAll'); refreshAdminData(); alert('Sistem di-reset'); } catch(err){ alert(err.message); } } }
+
+    function exportHasilKeExcel() {
+      if(dataHasil.length === 0) return alert('Tidak ada data hasil');
+      const ws = XLSX.utils.json_to_sheet(dataHasil); const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Hasil_Ujian");
+      XLSX.writeFile(wb, "Rekap_Hasil_MTK03.xlsx");
+    }
+
+    // === EDIT SOAL ===
+    function bukaModalEditSoal() {
+      document.getElementById('modal-edit-soal').classList.remove('hidden');
+      const select = document.getElementById('select-nomor-soal');
+      select.innerHTML = databaseSoal.map((s, i) => `<option value="${i}">Soal ${i + 1} (${s.tipe.toUpperCase()})</option>`).join('');
+      muatFormEditorSoal();
+    }
+    function tutupModalEditSoal() { document.getElementById('modal-edit-soal').classList.add('hidden'); }
+    
+    function muatFormEditorSoal() {
+      const idx = document.getElementById('select-nomor-soal').value;
+      const soal = databaseSoal[idx];
+      document.getElementById('edit-teks-soal').value = soal.teks || '';
+      
+      const cKonteks = document.getElementById('container-edit-konteks');
+      if(soal.tipe === 'bs') {
+        cKonteks.classList.remove('hidden');
+        document.getElementById('edit-konteks-soal').value = soal.konteks || '';
+        document.getElementById('edit-teks-soal').parentElement.classList.add('hidden');
+      } else {
+        cKonteks.classList.add('hidden');
+        document.getElementById('edit-teks-soal').parentElement.classList.remove('hidden');
+      }
+
+      const wrapper = document.getElementById('wrapper-opsi-inputs');
+      if(soal.tipe === 'pg') {
+        wrapper.innerHTML = soal.opsi.map((op, i) => `
+          <div class="flex items-center gap-2">
+            <input type="radio" name="edit-kunci-pg" value="${i}" ${soal.kunci === i ? 'checked' : ''} class="w-4 h-4">
+            <input type="text" id="edit-opsi-${i}" value="${op}" class="w-full border p-2 rounded text-sm">
+          </div>`).join('');
+      } else if (soal.tipe === 'pgk') {
+        wrapper.innerHTML = soal.opsi.map((op, i) => `
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="edit-kunci-pgk-${i}" ${soal.kunci.includes(i) ? 'checked' : ''} class="w-4 h-4">
+            <input type="text" id="edit-opsi-${i}" value="${op}" class="w-full border p-2 rounded text-sm">
+          </div>`).join('');
+      } else if (soal.tipe === 'bs') {
+        wrapper.innerHTML = soal.pernyataan.map((p, i) => `
+          <div class="flex items-center gap-2">
+            <select id="edit-kunci-bs-${i}" class="border p-2 rounded text-sm font-bold"><option value="B" ${soal.kunci[i] === 'B' ? 'selected' : ''}>Benar</option><option value="S" ${soal.kunci[i] === 'S' ? 'selected' : ''}>Salah</option></select>
+            <input type="text" id="edit-pernyataan-${i}" value="${p}" class="w-full border p-2 rounded text-sm">
+          </div>`).join('');
+      }
+    }
+
+    async function simpanPerubahanSoal(e) {
+      e.preventDefault();
+      const idx = document.getElementById('select-nomor-soal').value;
+      const soal = databaseSoal[idx];
+      
+      if(soal.tipe === 'bs') {
+        soal.konteks = document.getElementById('edit-konteks-soal').value;
+        soal.pernyataan.forEach((_, i) => {
+          soal.pernyataan[i] = document.getElementById(`edit-pernyataan-${i}`).value;
+          soal.kunci[i] = document.getElementById(`edit-kunci-bs-${i}`).value;
+        });
+      } else {
+        soal.teks = document.getElementById('edit-teks-soal').value;
+        soal.opsi.forEach((_, i) => { soal.opsi[i] = document.getElementById(`edit-opsi-${i}`).value; });
+        if(soal.tipe === 'pg') {
+          const radios = document.getElementsByName('edit-kunci-pg');
+          for(let r of radios) if(r.checked) soal.kunci = parseInt(r.value);
+        } else if (soal.tipe === 'pgk') {
+          const newKunci = [];
+          soal.opsi.forEach((_, i) => { if(document.getElementById(`edit-kunci-pgk-${i}`).checked) newKunci.push(i); });
+          soal.kunci = newKunci;
+        }
+      }
+      try { await apiFetch('syncSoal', { soal: databaseSoal }); alert('Soal berhasil diperbarui di server!'); tutupModalEditSoal(); } 
+      catch(err) { alert('Disimpan sementara di lokal. Error server: ' + err.message); }
+    }
+
+    async function resetSoalDefault() {
+      if(!confirm('Kembalikan semua soal ke bawaan pabrik (MTK03)?')) return;
+      databaseSoal = JSON.parse(JSON.stringify(defaultSoal));
+      try { await apiFetch('syncSoal', { soal: databaseSoal }); alert('Soal di-reset.'); tutupModalEditSoal(); } catch(err) { alert(err.message); }
+    }
+
+
+    // === ENGINE UJIAN PESERTA ===
+    async function handleLoginPeserta(e) {
+      e.preventDefault();
+      const id = document.getElementById('login-id').value.trim().toUpperCase();
+      const nama = document.getElementById('login-nama').value.trim();
+      if (!id || !nama) return alert('Lengkapi data');
+      try { pesertaAktif = await apiFetch('login', { id, nama }); } 
+      catch (err) { alert(`❌ Login gagal!\n\n${err.message}`); return; }
+      
+      jawabanPeserta = {}; indexSoalAktif = 0; sisaWaktu = 45 * 60; jumlahPelanggaranPindahTab = 0;
+      sedangUjianAktif = true; switchView('exam'); renderNavigasi(); tampilkanSoal(); startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        sisaWaktu--;
+        const m = Math.floor(sisaWaktu / 60).toString().padStart(2, '0');
+        const s = (sisaWaktu % 60).toString().padStart(2, '0');
+        document.getElementById('timer').innerText = `Sisa Waktu: ${m}:${s}`;
+        if (sisaWaktu <= 0) { clearInterval(timerInterval); alert('Waktu habis!'); prosesSelesaiUjian(); }
+      }, 1000);
+    }
+
+    function tampilkanSoal() {
+      const soal = databaseSoal[indexSoalAktif];
+      document.getElementById('label-nomor').innerText = `Soal ${indexSoalAktif + 1} dari ${databaseSoal.length}`;
+      const c = document.getElementById('soal-container'); c.innerHTML = '';
+      if (soal.tipe === 'pg') {
+        document.getElementById('label-tipe').innerText = 'Pilihan Ganda';
+        c.innerHTML = `<p class="font-semibold text-slate-800 text-base leading-relaxed">${soal.teks}</p><div class="space-y-2.5 mt-4">
+            ${soal.opsi.map((o, i) => `<label class="flex items-center space-x-3 p-3.5 rounded-xl border hover:bg-slate-50 cursor-pointer" onclick="jawabanPeserta[${soal.id}] = ${i}; tampilkanSoal();">
+                <input type="radio" name="j-${soal.id}" ${jawabanPeserta[soal.id] === i ? 'checked' : ''} class="w-4 h-4 text-indigo-600"><span class="text-sm">${String.fromCharCode(97+i).toUpperCase()}. ${o}</span></label>`).join('')}</div>`;
+      } else if (soal.tipe === 'pgk') {
+        document.getElementById('label-tipe').innerText = 'Pilihan Ganda Kompleks';
+        const ca = jawabanPeserta[soal.id] || [];
+        c.innerHTML = `<p class="font-semibold text-slate-800 text-base leading-relaxed">${soal.teks}</p><div class="space-y-2.5 mt-4">
+            ${soal.opsi.map((o, i) => `<label class="flex items-center space-x-3 p-3.5 rounded-xl border hover:bg-slate-50 cursor-pointer" onclick="simpanPGK(${soal.id}, ${i})">
+                <input type="checkbox" ${ca.includes(i) ? 'checked' : ''} class="w-4 h-4 text-indigo-600 rounded"><span class="text-sm">${o}</span></label>`).join('')}</div>`;
+      } else if (soal.tipe === 'bs') {
+        document.getElementById('label-tipe').innerText = 'Benar / Salah';
+        const ca = jawabanPeserta[soal.id] || {};
+        c.innerHTML = `<div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-sm mb-4"><strong class="text-amber-800 block mb-1">📌 Konteks:</strong><p class="text-slate-700">${soal.konteks}</p></div>
+          <div class="space-y-3">${soal.pernyataan.map((p, i) => `
+              <div class="p-3.5 border border-slate-200 rounded-xl flex justify-between items-center bg-slate-50">
+                <span class="text-sm font-medium text-slate-700 w-3/4">${i+1}. ${p}</span>
+                <div class="flex space-x-4"><label class="cursor-pointer text-emerald-700 font-bold text-xs flex flex-col items-center"><input type="radio" name="bs-${soal.id}-${i}" onchange="simpanBS(${soal.id}, ${i}, 'B')" ${ca[i] === 'B' ? 'checked' : ''}> B</label>
+                  <label class="cursor-pointer text-rose-700 font-bold text-xs flex flex-col items-center"><input type="radio" name="bs-${soal.id}-${i}" onchange="simpanBS(${soal.id}, ${i}, 'S')" ${ca[i] === 'S' ? 'checked' : ''}> S</label>
+                </div></div>`).join('')}</div>`;
+      }
+      document.getElementById('btn-prev').disabled = indexSoalAktif === 0;
+      if (indexSoalAktif === databaseSoal.length - 1) { document.getElementById('btn-next').classList.add('hidden'); document.getElementById('btn-finish').classList.remove('hidden'); } 
+      else { document.getElementById('btn-next').classList.remove('hidden'); document.getElementById('btn-finish').classList.add('hidden'); }
+      renderNavigasi();
+    }
+
+    function simpanPGK(soalId, i) { if (!jawabanPeserta[soalId]) jawabanPeserta[soalId] = []; const arr = jawabanPeserta[soalId]; const pos = arr.indexOf(i); if (pos > -1) arr.splice(pos, 1); else arr.push(i); if (arr.length === 0) delete jawabanPeserta[soalId]; tampilkanSoal(); }
+    function simpanBS(soalId, pi, v) { if (!jawabanPeserta[soalId]) jawabanPeserta[soalId] = {}; jawabanPeserta[soalId][pi] = v; renderNavigasi(); }
+    function prevSoal() { if (indexSoalAktif > 0) { indexSoalAktif--; tampilkanSoal(); } }
+    function nextSoal() { if (indexSoalAktif < databaseSoal.length - 1) { indexSoalAktif++; tampilkanSoal(); } }
+    function lompatKeSoal(i) { indexSoalAktif = i; tampilkanSoal(); }
+    function renderNavigasi() { document.getElementById('grid-navigasi').innerHTML = databaseSoal.map((s, idx) => `<button onclick="lompatKeSoal(${idx})" class="w-full h-10 rounded-lg font-bold text-xs border ${idx === indexSoalAktif ? 'ring-2 ring-indigo-600' : ''} ${(jawabanPeserta[s.id] !== undefined && (Array.isArray(jawabanPeserta[s.id]) ? jawabanPeserta[s.id].length > 0 : Object.keys(jawabanPeserta[s.id]).length > 0) || typeof jawabanPeserta[s.id] === 'number') ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 border-slate-300 text-slate-700'}">${idx + 1}</button>`).join(''); }
+
+    function konfirmasiSelesai() { if(confirm('Yakin kirim jawaban dan mengakhiri ujian? Pastikan semua nomor sudah terjawab.')) prosesSelesaiUjian(); }
+    
+    async function prosesSelesaiUjian(isForced = false) {
+      sedangUjianAktif = false; clearInterval(timerInterval);
+      let skor = 0; const bobot = 100 / databaseSoal.length;
+      databaseSoal.forEach(s => {
+        const jawab = jawabanPeserta[s.id]; if (jawab === undefined || jawab === null) return;
+        if (s.tipe === 'pg') { if (jawab === s.kunci) skor += bobot; } 
+        else if (s.tipe === 'pgk') { if ([...s.kunci].sort().join(',') === (Array.isArray(jawab) ? [...jawab].sort() : []).join(',')) skor += bobot; } 
+        else if (s.tipe === 'bs') { let bc = 0; s.kunci.forEach((k, i) => { if (jawab[i] === k) bc++; }); skor += (bc / s.kunci.length) * bobot; }
+      });
+      const nilai = Math.round(skor);
+      try { await apiFetch('addHasil', { id: pesertaAktif.id, nama: pesertaAktif.nama, skor: nilai, waktu: new Date().toLocaleTimeString() }); } catch (err) {}
+      document.getElementById('teks-hasil').innerText = isForced ? `Ujian dihentikan paksa karena melanggar aturan. Terima kasih.` : `Terima kasih ${pesertaAktif.nama}, asesmen selesai.`;
+      document.getElementById('nilai-akhir').innerText = nilai; switchView('result');
+    }
+  </script>
+</body>
+</html>
